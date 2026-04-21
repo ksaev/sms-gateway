@@ -20,10 +20,11 @@ model Payment {
   createdAt DateTime @default(now())
 }
 
-model SmsQueue {
+model smsQueue {
   id        Int      @id @default(autoincrement())
   phone     String
   message   String
-  status    String   @default("pending")
+  status    String   @default("pending") // pending | reserved | sent | failed
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

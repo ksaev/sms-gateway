@@ -41,6 +41,7 @@ export async function GET() {
       },
       data: {
         status: "processing",
+        updatedAt: new Date(),
       },
     });
 
