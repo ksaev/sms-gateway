@@ -3,9 +3,22 @@ import { NextResponse } from "next/server";
 
 const BATCH_SIZE = 10;
 
+// 🔥 CORS helper
+function corsHeaders(response: NextResponse) {
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return response;
+}
+
+// 🔧 OPTIONS (preflight browser)
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 204 });
+  return corsHeaders(response);
+}
+
 export async function GET() {
   try {
-    // 1. Récupérer SMS disponibles
     const smsList = await prisma.smsQueue.findMany({
       where: {
         status: "pending",
@@ -17,16 +30,14 @@ export async function GET() {
     });
 
     if (smsList.length === 0) {
-      return NextResponse.json([]);
+      return corsHeaders(NextResponse.json([]));
     }
 
-    // 2. LOCK ATOMIQUE (évite double worker)
+    // 🔒 LOCK ATOMIQUE
     await prisma.smsQueue.updateMany({
       where: {
-        id: {
-          in: smsList.map((sms) => sms.id),
-        },
-        status: "pending", // sécurité anti race condition
+        id: { in: smsList.map((sms) => sms.id) },
+        status: "pending",
       },
       data: {
         status: "processing",
@@ -34,14 +45,15 @@ export async function GET() {
       },
     });
 
-    // 3. Retourner les SMS lockés
-    return NextResponse.json(smsList);
+    return corsHeaders(NextResponse.json(smsList));
   } catch (error) {
     console.error("SMS QUEUE ERROR:", error);
 
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    return corsHeaders(
+      NextResponse.json(
+        { error: "Internal server error" },
+        { status: 500 }
+      )
     );
   }
 }
